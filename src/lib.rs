@@ -86,16 +86,14 @@ impl<I2C: I2c> Icm20948Transport for I2cDevice<I2C> {
     }
 
     async fn write_registers(&mut self, reg_addr: u8, write: &[u8]) -> Result<(), Self::Error> {
+        const MAX_WRITE_BUF_LENGTH : usize = 1;
+        assert!(write.len() <= MAX_WRITE_BUF_LENGTH);
+
         let addr = self.address.get();
-        self.bus_inner
-            .transaction(
-                addr,
-                &mut [
-                    i2c::Operation::Write(&[reg_addr]),
-                    i2c::Operation::Write(write),
-                ],
-            )
-            .await
+        let mut combined = [0u8; MAX_WRITE_BUF_LENGTH + 1];
+        combined[0] = reg_addr;
+        combined[1..write.len() + 1].copy_from_slice(write);
+        self.bus_inner.write(addr, &combined[0..write.len() + 1]).await
     }
 }
 
